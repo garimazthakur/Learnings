@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from flask import Flask
 import uuid
 app= Flask(__name__) 
@@ -17,35 +17,68 @@ app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:123456@localhost:
 db= SQLAlchemy(app)
 migrate=Migrate(app, db)
 
+
+class Association(db.Model):
+
+    id=db.Column(db.Integer, primary_key=True)
+    employers_id=db.Column(db.Integer,  db.ForeignKey('employers.id'))
+    employees_id=db.Column(db.Integer,  db.ForeignKey('employees.id'))
+   
+    employers=relationship("Employers", backref=backref("employee_acc"))
+    employee=relationship("Employees", backref=backref("employers_acc"))
+
+    
+    def __init__(self, employers_id, employees_id):
+            self.employers_id=employers_id
+            self.employees_id=employees_id
+
+            
+   
+
+# association=db.Table('association', 
+#                     db.Column("employers_id", db.Integer, db.ForeignKey('employers.id'), primary_key=True) ,
+#                     db.Column("employees_id", db.Integer, db.ForeignKey('employees.id'), primary_key=True)
+#                 )
+
+# db.Index("associate",association.employers_id, association.employees_id, unique=True )
+
 class Employers(db.Model):
-    _tablename__= "employer"
-    id=db.Column(db.Integer, primary_key=True, default=uuid.uuid4)
+    _tablename__= "employers"
+    id=db.Column(db.Integer, primary_key=True)
     company = db.Column(db.String(255))
     first_name = db.Column(db.String(255)) #employer's
     last_name = db.Column(db.String(255)) #employer's
     email = db.Column(db.String(255)) 
-    employees = db.relationship('Employees', back_populates='employer_id')
+    employee = db.relationship('Employees', secondary= Association, backref=db.backref("employer"), lazy='dynamic')
 
-    def __init__(self, company, first_name, last_name, email, employees):
+    def __init__(self, company, first_name, last_name, email):
         self.company=company
         self.first_name=first_name
         self.last_name=last_name
         self.email=email
         
 class Employees(db.Model):
-    __tablename__="employee"
-    id=db.Column(db.Integer, primary_key=True,default=uuid.uuid4)
+    __tablename__="employees"
+    id=db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
     email = db.Column(db.String(255))
     worksfor = db.Column(db.String(255))
-    employer_id= db.Column(db.Integer, db.ForeignKey('employer.id'), nullable=True)
-    # employees=db.relationship('Employers', back_populates="employees", lazy=True)
+    # employer_id= db.Column(db.Integer, db.ForeignKey('employer.id'), nullable=True)
+    # employees=db.relationship('Employers',secondary= association, backref="employee", lazy=True)
 
-    def __init__(self, worksfor, first_name, last_name, email, employer_id):
+    def __init__(self, worksfor, first_name, last_name, email):
         self.worksfor=worksfor
         self.first_name=first_name
         self.last_name=last_name
         self.email=email
-        self.employer_id=employer_id
-
+       
+# class Associated(db.Model):
+#     __tablename__='associations'
+#     id=db.Column(db.Integer, primary_key=True)
+#     employers_id = db.Column(db.Integer, db.ForeignKey('employers.id'))
+#     empolyee_id=db.Column(db.Integer, db.ForeignKey('employers.id'))
+    
+#     employers=relationship(Employers, backref=backref("associations",cascade="all, delete-orphan"))
+#     employee=relationship(Employers, backref=backref("associations", cascade="all,delete-orphan"))
+    
