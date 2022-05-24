@@ -8,7 +8,7 @@ import uuid
 import psycopg2
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from models import app, db, SECRET_KEY, Employers, Employees,Association
+from models import app, db, SECRET_KEY, Employers, Employees
 # from models import Association
 # db= SQLAlchemy(app)
 
@@ -111,21 +111,22 @@ def info_per_id(id):
 def upload_empdata_all():
     if request.method == 'POST':
         body=request.json
+        employer_id=body['employer_id']
         worksfor = body['worksfor']
         first_name = body['first_name']
         last_name = body['last_name']
         email = body['email']
-        data=Employees(worksfor, first_name, last_name, email)
+        data=Employees(worksfor, first_name, last_name, email, employer_id)
+        print("**************************************************************************************************")
         db.session.add(data)
         db.session.commit()
         return jsonify({
+                        "employer_id":employer_id,
                         "worksfor": worksfor,
                         "first_name": first_name, 
                         "last_name":last_name,
                         "email":email
         })
-
-
 
     if request.method == 'GET':
         allinfo=Employees.query.all()
@@ -134,6 +135,7 @@ def upload_empdata_all():
             for info in allinfo:
                 data= {}
                 data["id"]= info.id
+                data["employer_id"]=info.employer_id
                 data["worksfor"]=info.worksfor
                 data["first_name"]=info.first_name
                 data["last_name"]=info.last_name
@@ -147,19 +149,24 @@ def upload_empdata_all():
 
 @app.route('/employee_info/<id>', methods=['GET','DELETE', 'PUT'])
 def info_per_id1(id):
+    allinfo=Employees.query.all()
+    alinfo_emp=Employers.query.all()
+
     if request.method=='GET':
+        employer_id= Employees[employer_id]
+        # employee_q= db.session.query(Employees).filter(Employees.id.contains(employer_id))
         allinfo=Employees.query.get(id)
         # empr=Employers.query.get(id)
         # associate= db.session.query(association).query.all()
         # associate_obj= db.session.query(association).query.all()
         # associate=associate_obj.filter_by(id=id).first()
         # print(associate)
-        allinfo_emp=Employers.query.get(id)
+        allinfo_emp=Employers.query.get(employer_id)
         print("***********************************************************************")
-
         if allinfo:
             info={ 
-                    "employer": {"id":allinfo_emp.id ,"company": allinfo_emp.company, "first_name": allinfo_emp.first_name, "last_name":allinfo_emp.last_name },
+                    
+                    "employer": {"id":allinfo_emp.id ,"company": allinfo_emp.company, "first_name": allinfo_emp.first_name, "last_name":allinfo_emp.last_name},
                     "id": allinfo.id,
                     "worksfor": allinfo.worksfor,
                     "first_name": allinfo.first_name, 
@@ -198,12 +205,6 @@ def info_per_id1(id):
         db.session.add(allinfo)
         db.session.commit()
         return jsonify({"message": "The data has been updated"})
-
-
-
-
-
-  
 
 if __name__ == "__main__":
 
